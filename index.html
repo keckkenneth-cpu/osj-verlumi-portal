@@ -63,8 +63,8 @@
                 <button onclick="openManualEntryModal()" class="px-4 py-2 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-600 font-bold text-xs uppercase tracking-wider rounded-xl transition-all shrink-0">
                     ➕ Manual Entry
                 </button>
-                <button onclick="clearAllStoredData()" class="px-4 py-2 bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 font-bold text-xs uppercase tracking-wider rounded-xl transition-all shrink-0">
-                    🗑️ Delete All Shared Data
+                <button onclick="clearAllStoredData()" class="px-2.5 py-2 bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all shrink-0">
+                    🗑️ Delete All
                 </button>
                 <button onclick="openHistoryModal()" class="px-4 py-2 bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-600 font-bold text-xs uppercase tracking-wider rounded-xl transition-all shrink-0">
                     📜 History
@@ -114,6 +114,12 @@
             <img id="lightboxImg" src="" alt="Zoomed View" class="max-w-full max-h-[80vh] rounded-2xl shadow-2xl border border-slate-700/50 object-contain mx-auto">
             <div id="lightboxTitle" class="text-center text-slate-300 text-xs font-mono mt-3 uppercase tracking-wider bg-slate-900/60 py-1.5 px-4 rounded-full border border-slate-800 w-max mx-auto">Standard View</div>
         </div>
+    </div>
+
+    <div id="photoContextMenu" class="hidden fixed z-[110] bg-white border border-slate-200 rounded-lg shadow-2xl overflow-hidden">
+        <button onclick="confirmDeletePhotoFromMenu()" class="flex items-center gap-2 w-full px-4 py-2.5 text-left text-sm font-medium text-red-600 hover:bg-red-50 transition-colors whitespace-nowrap">
+            🗑️ Delete Photo
+        </button>
     </div>
 
     <div id="manualEntryModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4" onclick="if(event.target===this) closeManualEntryModal()">
@@ -528,9 +534,8 @@
                 if (currentPath) {
                     const currentUrl = getCachedPhotoUrl(currentPath);
                     html += `
-                        <div class="relative ${sizeClass} group/img shrink-0">
-                            <img src="${currentUrl}" class="${sizeClass} object-cover rounded-lg border border-indigo-200 shadow-sm cursor-zoom-in block" onclick="openLightboxEngine('${currentUrl}', '${item.name}')">
-                            <button onclick="removePhoto('${item.id}', ${idx}, '${field}')" class="absolute -top-1 -right-1 bg-red-600 hover:bg-red-500 text-white rounded-full text-[8px] w-3.5 h-3.5 flex items-center justify-center font-bold shadow">✕</button>
+                        <div class="relative ${sizeClass} shrink-0">
+                            <img src="${currentUrl}" class="${sizeClass} object-cover rounded-lg border border-indigo-200 shadow-sm cursor-zoom-in block" onclick="openLightboxEngine('${currentUrl}', '${item.name}')" oncontextmenu="return showPhotoContextMenu(event, '${item.id}', ${idx}, '${field}')" title="Right-click for options">
                         </div>
                     `;
                 } else {
@@ -1114,6 +1119,35 @@
             img.src = sourceData;
             box.classList.remove('hidden');
         }
+
+        // --- Right-click context menu for deleting a photo ---
+        let pendingPhotoDelete = null;
+
+        function showPhotoContextMenu(event, itemId, photoIdx, field) {
+            event.preventDefault();
+            pendingPhotoDelete = { itemId, photoIdx, field };
+
+            const menu = document.getElementById('photoContextMenu');
+            menu.style.left = `${event.pageX}px`;
+            menu.style.top = `${event.pageY}px`;
+            menu.classList.remove('hidden');
+            return false;
+        }
+
+        function hidePhotoContextMenu() {
+            document.getElementById('photoContextMenu').classList.add('hidden');
+        }
+
+        function confirmDeletePhotoFromMenu() {
+            hidePhotoContextMenu();
+            if (!pendingPhotoDelete) return;
+            const { itemId, photoIdx, field } = pendingPhotoDelete;
+            pendingPhotoDelete = null;
+            removePhoto(itemId, photoIdx, field);
+        }
+
+        document.addEventListener('click', hidePhotoContextMenu);
+        document.addEventListener('scroll', hidePhotoContextMenu, true);
 
         function escapeHtml(str) {
             if (!str) return '';
