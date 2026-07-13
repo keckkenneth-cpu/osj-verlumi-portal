@@ -66,6 +66,9 @@
                 <button onclick="clearAllStoredData()" class="px-4 py-2 bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 font-bold text-xs uppercase tracking-wider rounded-xl transition-all shrink-0">
                     🗑️ Delete All Shared Data
                 </button>
+                <button onclick="openHistoryModal()" class="px-4 py-2 bg-slate-100 border border-slate-200 hover:bg-slate-200 text-slate-600 font-bold text-xs uppercase tracking-wider rounded-xl transition-all shrink-0">
+                    📜 History
+                </button>
                 <button onclick="handleLogout()" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all shrink-0">
                     🔓 Logout
                 </button>
@@ -155,6 +158,15 @@
         </div>
     </div>
 
+    <div id="historyModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4" onclick="if(event.target===this) closeHistoryModal()">
+        <div class="bg-white w-full max-w-2xl max-h-[80vh] rounded-3xl shadow-2xl border border-slate-200 p-6 relative flex flex-col">
+            <button onclick="closeHistoryModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 font-bold text-lg">✕</button>
+            <h2 class="text-xl font-black text-slate-900 mb-1">📜 Activity History</h2>
+            <p class="text-xs text-slate-500 mb-4">Most recent 100 changes, newest first.</p>
+            <div id="historyList" class="overflow-y-auto flex-1 space-y-2 text-sm pr-1"></div>
+        </div>
+    </div>
+
     <script>
         // ======================================================================
         // SUPABASE CONFIG — replace these two values with your own project's
@@ -175,6 +187,20 @@
         let activeSheetTab = "";
         let editingItemId = null;
         let photoUrlCache = {};
+        let currentUserEmail = "";
+
+        async function logActivity(action, productName, details) {
+            try {
+                await sb.from('activity_log').insert({
+                    actor_email: currentUserEmail || 'unknown',
+                    action,
+                    product_name: productName || null,
+                    details: details || null
+                });
+            } catch (e) {
+                console.error("Could not record activity log", e);
+            }
+        }
 
         // The bucket is private now (auth required), so photo URLs are short-lived signed links, not public ones
         async function getPhotoUrl(path) {
@@ -221,6 +247,7 @@
         async function checkAuthAndInit() {
             const { data: { session } } = await sb.auth.getSession();
             if (session) {
+                currentUserEmail = session.user.email;
                 showApp();
             } else {
                 const gate = document.getElementById('authGate');
@@ -236,13 +263,14 @@
             const errEl = document.getElementById('loginError');
             errEl.classList.add('hidden');
 
-            const { error } = await sb.auth.signInWithPassword({ email, password });
+            const { data, error } = await sb.auth.signInWithPassword({ email, password });
             if (error) {
                 errEl.innerText = error.message;
                 errEl.classList.remove('hidden');
                 return;
             }
 
+            currentUserEmail = data.user.email;
             const gate = document.getElementById('authGate');
             gate.classList.add('hidden');
             gate.classList.remove('flex');
@@ -252,6 +280,57 @@
         async function handleLogout() {
             await sb.auth.signOut();
             location.reload();
+        }
+
+        function actionLabel(action) {
+            const labels = {
+                created: '➕ Created product',
+                updated: '✎ Updated product',
+                deleted: '✕ Deleted product',
+                photo_added: '📷 Added photo',
+                photo_removed: '🗑️ Removed photo',
+                excel_import: '📥 Imported Excel',
+                bulk_delete: '🗑️ Deleted ALL shared data'
+            };
+            return labels[action] || action;
+        }
+
+        async function openHistoryModal() {
+            const modal = document.getElementById('historyModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            const listEl = document.getElementById('historyList');
+            listEl.innerHTML = `<p class="text-slate-400 italic text-center py-8">Loading...</p>`;
+
+            const { data, error } = await sb.from('activity_log').select('*').order('created_at', { ascending: false }).limit(100);
+            if (error) {
+                listEl.innerHTML = `<p class="text-red-600 text-center py-8">Could not load history: ${escapeHtml(error.message)}</p>`;
+                return;
+            }
+            if (!data || data.length === 0) {
+                listEl.innerHTML = `<p class="text-slate-400 italic text-center py-8">No activity recorded yet.</p>`;
+                return;
+            }
+
+            listEl.innerHTML = data.map(row => {
+                const when = new Date(row.created_at).toLocaleString();
+                return `
+                    <div class="flex items-start justify-between gap-3 bg-slate-50 border border-slate-200 rounded-lg p-3">
+                        <div>
+                            <div class="font-bold text-slate-800">${escapeHtml(actionLabel(row.action))}${row.product_name ? ' — ' + escapeHtml(row.product_name) : ''}</div>
+                            <div class="text-xs text-slate-500">${escapeHtml(row.actor_email || 'unknown')}</div>
+                        </div>
+                        <div class="text-xs text-slate-400 whitespace-nowrap">${escapeHtml(when)}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function closeHistoryModal() {
+            const modal = document.getElementById('historyModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
         }
 
         async function showApp() {
@@ -399,6 +478,7 @@
                 labelStatus.innerText = `✓ Excel loaded successfully. Updated tabs: [ ${importedTabNames.join(', ')} ]. Upload photos in Step 2, then click Step 3 to download the new Excel.`;
                 document.getElementById('searchInput').disabled = false;
                 document.getElementById('exportBtn').disabled = false;
+                logActivity('excel_import', null, `Tabs: ${importedTabNames.join(', ')}`);
 
             } catch (err) {
                 labelStatus.innerText = "❌ Error reading Excel: " + err.message;
@@ -658,6 +738,7 @@
                     labelStatus.innerText = "❌ Could not save photos.";
                     return;
                 }
+                logActivity('photo_added', match.name, `${addedCount} photo(s) added to ${field === 'photos' ? 'QC Photos' : 'Packaging Photos'}`);
             }
 
             renderMatrixGrid(globalDataset[activeSheetTab]);
@@ -693,6 +774,7 @@
                 delete photoUrlCache[path];
             }
 
+            logActivity('photo_removed', match.name, field === 'photos' ? 'QC Photos' : 'Packaging Photos');
             renderMatrixGrid(globalDataset[activeSheetTab]);
         }
 
@@ -896,6 +978,7 @@
             document.getElementById('exportBtn').disabled = false;
             document.getElementById('statusMessage').innerText = `✓ Product "${productName}" was manually added to tab [${tabName}].`;
 
+            logActivity('created', productName, `Added to tab [${tabName}]`);
             closeManualEntryModal();
         }
 
@@ -913,6 +996,8 @@
                 alert("Could not delete the product: " + error.message);
                 return;
             }
+
+            logActivity('deleted', match ? match.name : null);
 
             if (match) {
                 const pathsToRemove = [...(match.photos || []), ...(match.partsPhotos || [])].filter(Boolean);
@@ -989,6 +1074,7 @@
             editingItemId = null;
             renderMatrixGrid(globalDataset[activeSheetTab]);
             document.getElementById('statusMessage').innerText = `✓ Product "${nameVal}" was updated.`;
+            logActivity('updated', nameVal);
         }
 
         async function clearAllStoredData() {
@@ -1010,6 +1096,7 @@
                 return;
             }
 
+            await logActivity('bulk_delete', null, 'All products and photos deleted');
             location.reload();
         }
 
