@@ -533,9 +533,14 @@
                 const currentPath = values[idx] || "";
                 if (currentPath) {
                     const currentUrl = getCachedPhotoUrl(currentPath);
-                    html += `
+                    const contextAttrs = `oncontextmenu="return showPhotoContextMenu(event, '${item.id}', ${idx}, '${field}')" title="Right-click for options"`;
+                    html += currentUrl ? `
                         <div class="relative ${sizeClass} shrink-0">
-                            <img src="${currentUrl}" class="${sizeClass} object-cover rounded-lg border border-indigo-200 shadow-sm cursor-zoom-in block" onclick="openLightboxEngine('${currentUrl}', '${item.name}')" oncontextmenu="return showPhotoContextMenu(event, '${item.id}', ${idx}, '${field}')" title="Right-click for options">
+                            <img src="${currentUrl}" class="${sizeClass} object-cover rounded-lg border border-indigo-200 shadow-sm cursor-zoom-in block" onclick="openLightboxEngine('${currentUrl}', '${item.name}')" ${contextAttrs}>
+                        </div>
+                    ` : `
+                        <div class="relative ${sizeClass} shrink-0 ${sizeClass} flex items-center justify-center bg-amber-50 border border-amber-300 rounded-lg cursor-pointer" ${contextAttrs}>
+                            <span class="text-amber-500 text-sm" title="Photo failed to load — right-click to remove">⚠️</span>
                         </div>
                     `;
                 } else {
