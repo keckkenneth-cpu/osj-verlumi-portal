@@ -533,13 +533,13 @@
                 const currentPath = values[idx] || "";
                 if (currentPath) {
                     const currentUrl = getCachedPhotoUrl(currentPath);
-                    const contextAttrs = `oncontextmenu="return showPhotoContextMenu(event, '${item.id}', ${idx}, '${field}')" title="Right-click for options"`;
+                    const dataAttrs = `data-item-id="${item.id}" data-photo-idx="${idx}" data-photo-field="${field}" title="Right-click for options"`;
                     html += currentUrl ? `
                         <div class="relative ${sizeClass} shrink-0">
-                            <img src="${currentUrl}" class="${sizeClass} object-cover rounded-lg border border-indigo-200 shadow-sm cursor-zoom-in block" onclick="openLightboxEngine('${currentUrl}', '${item.name}')" ${contextAttrs}>
+                            <img src="${currentUrl}" class="photo-thumb ${sizeClass} object-cover rounded-lg border border-indigo-200 shadow-sm cursor-zoom-in block" onclick="openLightboxEngine('${currentUrl}', '${item.name}')" ${dataAttrs}>
                         </div>
                     ` : `
-                        <div class="relative ${sizeClass} shrink-0 ${sizeClass} flex items-center justify-center bg-amber-50 border border-amber-300 rounded-lg cursor-pointer" ${contextAttrs}>
+                        <div class="photo-thumb relative ${sizeClass} shrink-0 flex items-center justify-center bg-amber-50 border border-amber-300 rounded-lg cursor-pointer" ${dataAttrs}>
                             <span class="text-amber-500 text-sm" title="Photo failed to load — right-click to remove">⚠️</span>
                         </div>
                     `;
@@ -1126,11 +1126,20 @@
         }
 
         // --- Right-click context menu for deleting a photo ---
+        // Uses a single delegated listener (rather than a per-image inline handler) so
+        // positioning always reads the actual click event that triggered it
         let pendingPhotoDelete = null;
 
-        function showPhotoContextMenu(event, itemId, photoIdx, field) {
+        document.addEventListener('contextmenu', function(event) {
+            const thumb = event.target.closest('.photo-thumb');
+            if (!thumb) return;
+
             event.preventDefault();
-            pendingPhotoDelete = { itemId, photoIdx, field };
+            pendingPhotoDelete = {
+                itemId: thumb.dataset.itemId,
+                photoIdx: Number(thumb.dataset.photoIdx),
+                field: thumb.dataset.photoField
+            };
 
             // Uses viewport-relative coordinates since the menu is position:fixed —
             // page coordinates would be wrong once the page is scrolled
@@ -1145,8 +1154,7 @@
 
             menu.style.left = `${Math.max(8, left)}px`;
             menu.style.top = `${Math.max(8, top)}px`;
-            return false;
-        }
+        });
 
         function hidePhotoContextMenu() {
             document.getElementById('photoContextMenu').classList.add('hidden');
