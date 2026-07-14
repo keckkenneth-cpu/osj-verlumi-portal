@@ -1132,10 +1132,19 @@
             event.preventDefault();
             pendingPhotoDelete = { itemId, photoIdx, field };
 
+            // Uses viewport-relative coordinates since the menu is position:fixed —
+            // page coordinates would be wrong once the page is scrolled
             const menu = document.getElementById('photoContextMenu');
-            menu.style.left = `${event.pageX}px`;
-            menu.style.top = `${event.pageY}px`;
             menu.classList.remove('hidden');
+
+            const menuRect = menu.getBoundingClientRect();
+            let left = event.clientX;
+            let top = event.clientY;
+            if (left + menuRect.width > window.innerWidth) left = window.innerWidth - menuRect.width - 8;
+            if (top + menuRect.height > window.innerHeight) top = window.innerHeight - menuRect.height - 8;
+
+            menu.style.left = `${Math.max(8, left)}px`;
+            menu.style.top = `${Math.max(8, top)}px`;
             return false;
         }
 
