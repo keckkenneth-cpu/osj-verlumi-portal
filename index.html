@@ -88,13 +88,13 @@
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="bg-slate-50 text-slate-500 uppercase text-[11px] font-bold tracking-widest border-b border-slate-200">
-                            <th class="p-5 w-[17%]">Product Specification</th>
+                            <th class="p-5 w-[17%]">Product Description</th>
                             <th class="p-5 w-[16%]">Complete Packaging Parts</th>
                             <th class="p-5 w-[10%]">Weight</th>
                             <th class="p-5 w-[11%] text-center border-l border-slate-200">Packaging Photos (Max 4)</th>
                             <th class="p-5 w-[14%]">Approved Batch Code Loc.</th>
-                            <th class="p-5 w-[14%]">Seal Type & Mechanics</th>
-                            <th class="p-5 w-[12%] text-center border-l border-slate-200">Step 2: QC Photos (Max 3)</th>
+                            <th class="p-5 w-[14%]">Seal Type</th>
+                            <th class="p-5 w-[12%] text-center border-l border-slate-200">FG Pictures</th>
                         </tr>
                     </thead>
                     <tbody id="dashboardBody" class="divide-y divide-slate-200 text-sm bg-white">
@@ -141,7 +141,7 @@
                     <p class="text-[10px] text-slate-400 mt-1">If the name is new, a new tab will be created automatically.</p>
                 </div>
                 <div>
-                    <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Product Specification</label>
+                    <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Product Description</label>
                     <input type="text" id="manualProductName" required placeholder="Product name" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium">
                 </div>
                 <div>
@@ -157,7 +157,7 @@
                     <textarea id="manualBatch" rows="2" placeholder="Batch code location" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium resize-none"></textarea>
                 </div>
                 <div>
-                    <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Seal Type & Mechanics</label>
+                    <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1">Seal Type</label>
                     <textarea id="manualSeal" rows="2" placeholder="Seal type" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium resize-none"></textarea>
                 </div>
 
@@ -1142,7 +1142,7 @@
             const seal = document.getElementById('manualSeal').value.trim();
 
             if (!tabName || !productName) {
-                alert("Tab and Product Specification are required.");
+                alert("Tab and Product Description are required.");
                 return;
             }
 
@@ -1236,7 +1236,7 @@
             const sealVal = document.getElementById(`edit_seal_${itemId}`).value.trim();
 
             if (!nameVal) {
-                alert("Product Specification cannot be empty.");
+                alert("Product Description cannot be empty.");
                 return;
             }
 
